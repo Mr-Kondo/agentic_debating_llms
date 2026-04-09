@@ -73,6 +73,38 @@ uv run python -m app.main --topic "ローカルLLMは企業内ナレッジ活用
 - `--max-turns 10`: 最大ターン上書き
 - `--no-preload`: セッション開始時の preload/warmup 無効化
 
+## 起動トラブルシューティング
+
+### 1. モデル未取得エラー
+
+起動時にモデル不足で停止した場合は、表示されたモデルを pull してください。
+
+```bash
+ollama pull llama3.1:8b
+ollama pull gemma4:8b
+ollama pull qwen3.5:8b
+```
+
+### 2. Ollama 404 / endpoint エラー
+
+`OLLAMA_BASE_URL` を確認し、`ollama serve` が起動していることを確認してください。
+
+```bash
+ollama serve
+```
+
+```env
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+### 3. 初期診断の一時回避
+
+preload をスキップしてアプリ本体の動作確認をする場合:
+
+```bash
+uv run python -m app.main --topic "..." --no-preload
+```
+
 ## Langfuse を使う場合
 
 `.env` で以下を設定します。

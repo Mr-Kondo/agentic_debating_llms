@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.llm.ollama_client import OllamaClient, OllamaModelNotLoadedError
+from app.llm.ollama_client import (
+    OllamaClient,
+    OllamaClientError,
+    OllamaModelNotLoadedError,
+    OllamaTimeoutError,
+)
 
 
 @dataclass(slots=True)
@@ -53,12 +58,28 @@ class ModelManager:
         except OllamaModelNotLoadedError:
             return
 
-    def preload_models(self, models: list[str], warmup: bool = True) -> None:
-        """Preload and optionally warmup all models used by a session."""
+    def preload_models(self, models: list[str], warmup: bool = True) -> dict[str, str]:
+        """Preload and optionally warmup all models used by a session.
+
+        Returns a status map keyed by model name.
+        - success: preload and optional warmup succeeded
+        - not_found: model is unavailable on Ollama
+        - error:timeout / error:client: other transport or API failures
+        """
+        results: dict[str, str] = {}
         for model in models:
-            self.preload(model)
-            if warmup:
-                self.warmup(model)
+            try:
+                self.preload(model)
+                if warmup:
+                    self.warmup(model)
+                results[model] = "success"
+            except OllamaModelNotLoadedError:
+                results[model] = "not_found"
+            except OllamaTimeoutError:
+                results[model] = "error:timeout"
+            except OllamaClientError:
+                results[model] = "error:client"
+        return results
 
     def ensure_loaded(self, model: str, warmup: bool = True) -> None:
         """Ensure model is available, attempting preload if not loaded."""

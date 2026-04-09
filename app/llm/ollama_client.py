@@ -35,6 +35,15 @@ class OllamaClient:
     base_url: str
     timeout_seconds: int = 60
 
+    @staticmethod
+    def _looks_like_model_not_found(message: str) -> bool:
+        lowered = message.lower()
+        model_hint = "model" in lowered
+        missing_hint = (
+            "not found" in lowered or "not loaded" in lowered or "no such model" in lowered or "unknown model" in lowered
+        )
+        return model_hint and missing_hint
+
     def _request(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         url = f"{self.base_url.rstrip('/')}{path}"
         try:
@@ -44,10 +53,16 @@ class OllamaClient:
         except httpx.TimeoutException as exc:
             raise OllamaTimeoutError(f"Timeout calling Ollama at {url}") from exc
         except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
             msg = exc.response.text
-            if "model" in msg.lower() and "not" in msg.lower() and "found" in msg.lower():
+            if status_code == 404 and self._looks_like_model_not_found(msg):
                 raise OllamaModelNotLoadedError(msg) from exc
-            raise OllamaClientError(f"Ollama HTTP error: {msg}") from exc
+            if status_code == 404:
+                raise OllamaClientError(
+                    f"Ollama endpoint not found at {exc.request.url}. "
+                    f"Check OLLAMA_BASE_URL and available API endpoints. Response: {msg}"
+                ) from exc
+            raise OllamaClientError(f"Ollama HTTP {status_code} error: {msg}") from exc
         except httpx.HTTPError as exc:
             raise OllamaClientError(f"Ollama transport error: {exc}") from exc
         except ValueError as exc:
@@ -55,7 +70,7 @@ class OllamaClient:
 
         if "error" in data and data["error"]:
             msg = str(data["error"])
-            if "model" in msg.lower() and "not" in msg.lower() and "found" in msg.lower():
+            if self._looks_like_model_not_found(msg):
                 raise OllamaModelNotLoadedError(msg)
             raise OllamaClientError(msg)
 

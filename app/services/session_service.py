@@ -77,7 +77,27 @@ def initialize_session(
 
     if preload_models:
         models = [config.facilitator_model, config.debater_a_model, config.debater_b_model]
-        model_manager.preload_models(models=models, warmup=config.warmup_models_on_preload)
+        preload_results = model_manager.preload_models(
+            models=models,
+            warmup=config.warmup_models_on_preload,
+        )
+        failed = {model: status for model, status in preload_results.items() if status != "success"}
+        if failed:
+            missing = [model for model, status in failed.items() if status == "not_found"]
+            other_failures = {model: status for model, status in failed.items() if status.startswith("error:")}
+
+            lines = ["Failed to preload one or more Ollama models."]
+            if missing:
+                lines.append("Missing models were detected. Pull them with:")
+                for model in missing:
+                    lines.append(f"  ollama pull {model}")
+            if other_failures:
+                lines.append("Other preload errors:")
+                for model, status in other_failures.items():
+                    lines.append(f"  {model}: {status}")
+                lines.append(f"Check OLLAMA_BASE_URL={config.ollama_base_url} and ensure Ollama is running.")
+
+            raise RuntimeError("\n".join(lines))
 
     initial_state: DiscussionState = {
         "topic": topic,

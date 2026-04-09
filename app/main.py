@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from app.config import load_config
 from app.graph import build_graph
@@ -30,14 +31,20 @@ def main() -> None:
     if args.max_turns is not None:
         config.max_turns = args.max_turns
 
-    services, initial_state = initialize_session(
-        config=config,
-        topic=args.topic,
-        preload_models=not args.no_preload,
-    )
+    try:
+        services, initial_state = initialize_session(
+            config=config,
+            topic=args.topic,
+            preload_models=not args.no_preload,
+        )
 
-    graph = build_graph(services)
-    final_state = graph.invoke(initial_state)
+        graph = build_graph(services)
+        final_state = graph.invoke(initial_state)
+    except RuntimeError as exc:
+        print("Startup failed.", file=sys.stderr)
+        print(str(exc), file=sys.stderr)
+        print("Tip: try '--no-preload' for initial diagnostics.", file=sys.stderr)
+        raise SystemExit(1) from exc
 
     print("=== Session Completed ===")
     print(f"Session ID: {final_state['session_id']}")
