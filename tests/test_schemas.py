@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import DebaterResponse, DiscussionTurn, FacilitatorDecision, SearchResult, ValidatorFeedback
+from app.schemas import ContinuationDecision, DebaterResponse, DiscussionTurn, FacilitatorDecision, SearchResult, ValidatorFeedback
 
 
 def test_facilitator_decision_valid() -> None:
@@ -68,3 +68,38 @@ def test_validator_feedback_invalid_confidence() -> None:
             issues="issue",
             improvement="fix",
         )
+
+
+def test_continuation_decision_valid_continue_a() -> None:
+    decision = ContinuationDecision(
+        action="continue_a",
+        reason="Explore edge case in the conclusion",
+        focus_instruction="Challenge the assumption about scalability",
+    )
+    assert decision.action == "continue_a"
+    assert decision.conclude_reason is None
+
+
+def test_continuation_decision_valid_conclude() -> None:
+    decision = ContinuationDecision(
+        action="conclude",
+        reason="No significant blind spots remain",
+        conclude_reason="coverage_sufficient",
+    )
+    assert decision.action == "conclude"
+    assert decision.conclude_reason == "coverage_sufficient"
+
+
+def test_continuation_decision_invalid_action() -> None:
+    with pytest.raises(ValidationError):
+        ContinuationDecision(action="speak_a", reason="wrong action type")
+
+
+def test_continuation_decision_search_action() -> None:
+    decision = ContinuationDecision(
+        action="search",
+        reason="Need evidence for counterexample",
+        search_query="failure cases of distributed consensus",
+    )
+    assert decision.action == "search"
+    assert decision.search_query is not None

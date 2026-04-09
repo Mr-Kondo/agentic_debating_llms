@@ -47,6 +47,7 @@ cp .env.example .env
 - `VALIDATOR_MODEL`: Debater 発言の品質検証モデル
 - `MODEL_KEEP_ALIVE`: Ollama keep_alive
 - `MAX_TURNS`: 最大ターン数
+- `CONTINUATION_ROUNDS`: 結論後の継続議論ラウンド数（0 = 無効、既定値）
 - `SEARCH_COMMAND_TEMPLATE`: 検索 CLI テンプレート（`{query}` 必須）
 - `MARKDOWN_LOG_DIR`: ログ保存ディレクトリ
 - `INPUT_DIR`: `--topic` 未指定時に読む Markdown 入力ディレクトリ
@@ -78,6 +79,7 @@ uv run python -m app.main --topic "ローカルLLMは企業内ナレッジ活用
 オプション:
 
 - `--max-turns 10`: 最大ターン上書き
+- `--continuation-rounds 3`: 結論後の継続議論ラウンド数（0 でデフォルト無効）
 - `--no-preload`: セッション開始時の preload/warmup 無効化
 
 ### in/ からの自動入力
@@ -175,9 +177,9 @@ uv run pytest
 
 ## 今後の拡張候補
 
-- DSPy ベースの Facilitator/Summarizer 差し替え
+- DSPy ベースの継続議論判断の自動最適化（`app/dspy_modules/continuation_decider.py`）
 - Search digest の高度化（抽出要約、重複除去）
-- 評価用メトリクス（議論収束度、主張多様性）
+- 評価用メトリクス（議論収束度、主張多様性、継続ラウンドの新規性スコア）
 - 非同期実行と並列検索
 
 ## 詳細ドキュメント

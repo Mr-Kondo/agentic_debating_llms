@@ -39,12 +39,18 @@ flowchart TD
     J --> V
     V --> M[summarizer_node]
     K --> M
-    M --> H
+    M -->|continuation_mode=false| H
+    M -->|continuation_mode=true| CF[continuation_facilitator_node]
 
     L --> N[finalize_node]
-    N --> O[end_trace + logs final append]
-    O --> O2[write result snapshot to out/]
-    O2 --> P[END]
+    N -->|continuation_max_turns=0| P[END]
+    N -->|continuation_max_turns>0| CF
+
+    CF -->|continue_a| I
+    CF -->|continue_b| J
+    CF -->|search| K
+    CF -->|conclude| FC[finalize_continuation_node]
+    FC --> P
 ```
 
 ## 補足: 失敗時の扱い

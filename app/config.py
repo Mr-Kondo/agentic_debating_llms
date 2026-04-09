@@ -40,6 +40,7 @@ class Config(BaseSettings):
 
     summary_recent_turns: int = Field(default=6, ge=2, le=20)
     recent_context_turns: int = Field(default=4, ge=2, le=12)
+    continuation_rounds: int = Field(default=0, ge=0, le=10, alias="CONTINUATION_ROUNDS")
 
     preload_models_on_start: bool = True
     warmup_models_on_preload: bool = True

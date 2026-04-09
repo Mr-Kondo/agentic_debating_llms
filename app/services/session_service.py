@@ -126,5 +126,8 @@ def initialize_session(
         "input_sources": input_sources or [],
         "session_id": sid,
         "last_error": None,
+        "continuation_mode": False,
+        "continuation_turn_count": 0,
+        "continuation_max_turns": config.continuation_rounds,
     }
     return services, initial_state

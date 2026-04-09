@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.schemas import DebaterResponse, FacilitatorDecision, SearchResult, ValidatorFeedback
+from app.schemas import ContinuationDecision, DebaterResponse, FacilitatorDecision, SearchResult, ValidatorFeedback
 from app.utils.time_utils import now_utc
 
 
@@ -43,6 +43,18 @@ class MarkdownLogger:
             f"- focus_instruction: {decision.focus_instruction or ''}\n"
             f"- search_query: {decision.search_query or ''}\n"
             f"- terminate_reason: {decision.terminate_reason or ''}\n\n"
+        )
+        self._append(path, body)
+
+    def append_continuation_decision(self, path: Path, decision: ContinuationDecision) -> None:
+        """Append continuation facilitator decision event."""
+        body = (
+            f"### Continuation Decision ({now_utc().isoformat()})\n"
+            f"- action: {decision.action}\n"
+            f"- reason: {decision.reason}\n"
+            f"- focus_instruction: {decision.focus_instruction or ''}\n"
+            f"- search_query: {decision.search_query or ''}\n"
+            f"- conclude_reason: {decision.conclude_reason or ''}\n\n"
         )
         self._append(path, body)
 
