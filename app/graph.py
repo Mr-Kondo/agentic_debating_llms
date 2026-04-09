@@ -9,6 +9,7 @@ from app.nodes.facilitator import facilitator_node
 from app.nodes.finalize import finalize_node, finish_node
 from app.nodes.search import search_node
 from app.nodes.summarizer import summarizer_node
+from app.nodes.validator import validator_node
 from app.state import DiscussionState
 
 
@@ -31,6 +32,7 @@ def build_graph(services):
     graph.add_node("facilitator", lambda s: facilitator_node(s, services))
     graph.add_node("debater_a", lambda s: debater_a_node(s, services))
     graph.add_node("debater_b", lambda s: debater_b_node(s, services))
+    graph.add_node("validator", lambda s: validator_node(s, services))
     graph.add_node("search", lambda s: search_node(s, services))
     graph.add_node("summarizer", lambda s: summarizer_node(s, services.summarizer))
     graph.add_node("finish", lambda s: finish_node(s, services))
@@ -47,8 +49,9 @@ def build_graph(services):
             "finish": "finish",
         },
     )
-    graph.add_edge("debater_a", "summarizer")
-    graph.add_edge("debater_b", "summarizer")
+    graph.add_edge("debater_a", "validator")
+    graph.add_edge("debater_b", "validator")
+    graph.add_edge("validator", "summarizer")
     graph.add_edge("search", "summarizer")
     graph.add_edge("summarizer", "facilitator")
     graph.add_edge("finish", "finalize")

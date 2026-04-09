@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import DebaterResponse, DiscussionTurn, FacilitatorDecision, SearchResult
+from app.schemas import DebaterResponse, DiscussionTurn, FacilitatorDecision, SearchResult, ValidatorFeedback
 
 
 def test_facilitator_decision_valid() -> None:
@@ -48,3 +48,23 @@ def test_search_result_roundtrip() -> None:
 def test_discussion_turn_timestamp() -> None:
     turn = DiscussionTurn(role="Debater A", content="point", timestamp=datetime.now(timezone.utc))
     assert turn.timestamp.tzinfo is not None
+
+
+def test_validator_feedback_valid() -> None:
+    feedback = ValidatorFeedback(
+        is_valid=True,
+        confidence=0.8,
+        issues="minor caveat",
+        improvement="add one concrete example",
+    )
+    assert feedback.is_valid is True
+
+
+def test_validator_feedback_invalid_confidence() -> None:
+    with pytest.raises(ValidationError):
+        ValidatorFeedback(
+            is_valid=False,
+            confidence=1.2,
+            issues="issue",
+            improvement="fix",
+        )

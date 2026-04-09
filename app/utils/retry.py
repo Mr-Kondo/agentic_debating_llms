@@ -80,7 +80,10 @@ def run_with_search_retry(operation: Callable[[], T], policy: SearchRetryPolicy)
                 raise
             timeout_count += 1
             time.sleep(policy.base_backoff_seconds * (2**timeout_count))
-        except SearchCLIError:
+        except SearchCLIError as exc:
+            # Do not retry when the command is missing from PATH.
+            if getattr(exc, "result", None) is not None and exc.result.returncode == 127:
+                raise
             if cli_count >= policy.cli_retries:
                 raise
             cli_count += 1

@@ -27,6 +27,15 @@ class DebaterResponse(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+class ValidatorFeedback(BaseModel):
+    """Structured quality feedback emitted by validator model."""
+
+    is_valid: bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    issues: str = Field(min_length=1, max_length=1200)
+    improvement: str = Field(min_length=1, max_length=1200)
+
+
 class SearchResult(BaseModel):
     """Result of a single search CLI execution."""
 

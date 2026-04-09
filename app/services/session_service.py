@@ -34,6 +34,8 @@ def initialize_session(
     *,
     config: Config,
     topic: str,
+    initial_compact_summary: str = "",
+    input_sources: list[str] | None = None,
     session_id: str | None = None,
     preload_models: bool = True,
 ) -> tuple[SessionServices, DiscussionState]:
@@ -52,9 +54,13 @@ def initialize_session(
         public_key=config.langfuse_public_key,
         secret_key=config.langfuse_secret_key,
     )
+    langfuse.startup_check()
     langfuse.start_trace(session_id=sid, topic=topic)
 
-    markdown_logger = MarkdownLogger(output_dir=config.markdown_log_dir_path)
+    markdown_logger = MarkdownLogger(
+        output_dir=config.markdown_log_dir_path,
+        result_dir=config.output_dir_path,
+    )
     markdown_path = markdown_logger.create_session_file(session_id=sid, topic=topic)
 
     search_service = SearchService(
@@ -76,7 +82,12 @@ def initialize_session(
     )
 
     if preload_models:
-        models = [config.facilitator_model, config.debater_a_model, config.debater_b_model]
+        models = [
+            config.facilitator_model,
+            config.debater_a_model,
+            config.debater_b_model,
+            config.validator_model,
+        ]
         preload_results = model_manager.preload_models(
             models=models,
             warmup=config.warmup_models_on_preload,
@@ -103,13 +114,16 @@ def initialize_session(
         "topic": topic,
         "transcript": [],
         "search_results": [],
-        "compact_summary": "",
+        "validation_log": [],
+        "compact_summary": initial_compact_summary,
         "turn_count": 0,
         "max_turns": config.max_turns,
         "next_action": "speak_a",
         "last_decision": FacilitatorDecision(action="speak_a", reason="initial action"),
         "final_summary": None,
         "markdown_path": str(markdown_path),
+        "result_markdown_path": None,
+        "input_sources": input_sources or [],
         "session_id": sid,
         "last_error": None,
     }

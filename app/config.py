@@ -18,6 +18,7 @@ class Config(BaseSettings):
     facilitator_model: str = Field(default="llama3.1:8b", alias="FACILITATOR_MODEL")
     debater_a_model: str = Field(default="gemma4:8b", alias="DEBATER_A_MODEL")
     debater_b_model: str = Field(default="qwen3.5:8b", alias="DEBATER_B_MODEL")
+    validator_model: str = Field(default="rnj-1:latest", alias="VALIDATOR_MODEL")
     model_keep_alive: str = Field(default="10m", alias="MODEL_KEEP_ALIVE")
 
     max_turns: int = Field(default=8, alias="MAX_TURNS", ge=1, le=50)
@@ -29,6 +30,8 @@ class Config(BaseSettings):
     ollama_timeout_seconds: int = Field(default=60, alias="OLLAMA_TIMEOUT_SECONDS", ge=5)
 
     markdown_log_dir: str = Field(default="./logs", alias="MARKDOWN_LOG_DIR")
+    input_dir: str = Field(default="./in", alias="INPUT_DIR")
+    output_dir: str = Field(default="./out", alias="OUTPUT_DIR")
 
     langfuse_enabled: bool = Field(default=False, alias="LANGFUSE_ENABLED")
     langfuse_host: str = Field(default="", alias="LANGFUSE_HOST")
@@ -53,6 +56,16 @@ class Config(BaseSettings):
     def markdown_log_dir_path(self) -> Path:
         """Return markdown log directory as a Path."""
         return Path(self.markdown_log_dir).expanduser().resolve()
+
+    @property
+    def input_dir_path(self) -> Path:
+        """Return default input markdown directory as a Path."""
+        return Path(self.input_dir).expanduser().resolve()
+
+    @property
+    def output_dir_path(self) -> Path:
+        """Return output directory for final result markdown as a Path."""
+        return Path(self.output_dir).expanduser().resolve()
 
 
 def load_config() -> Config:

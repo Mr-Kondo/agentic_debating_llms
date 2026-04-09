@@ -43,5 +43,17 @@ def finalize_node(state: DiscussionState, services) -> dict:
 
     markdown_path = Path(state["markdown_path"])
     services.markdown_logger.append_final_summary(path=markdown_path, summary=summary)
-    services.langfuse.end_trace(output={"final_summary": summary})
-    return {"final_summary": summary}
+    highlights = []
+    for item in state.get("validation_log", []):
+        if isinstance(item, dict):
+            highlights.append(str(item.get("issues", "")))
+        else:
+            highlights.append(item.issues)
+    result_path = services.markdown_logger.write_result_snapshot(
+        session_id=state["session_id"],
+        topic=state["topic"],
+        final_summary=summary,
+        input_sources=state.get("input_sources", []),
+        validation_highlights=[h for h in highlights if h][:3],
+    )
+    return {"final_summary": summary, "result_markdown_path": str(result_path)}

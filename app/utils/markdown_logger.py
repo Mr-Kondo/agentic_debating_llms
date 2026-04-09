@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.schemas import DebaterResponse, FacilitatorDecision, SearchResult
+from app.schemas import DebaterResponse, FacilitatorDecision, SearchResult, ValidatorFeedback
 from app.utils.time_utils import now_utc
 
 
@@ -14,6 +14,7 @@ class MarkdownLogger:
     """Append structured debate events to markdown file."""
 
     output_dir: Path
+    result_dir: Path | None = None
 
     def create_session_file(self, session_id: str, topic: str) -> Path:
         """Create markdown file and write session header."""
@@ -66,7 +67,47 @@ class MarkdownLogger:
         )
         self._append(path, body)
 
+    def append_validator_feedback(self, path: Path, feedback: ValidatorFeedback) -> None:
+        """Append validator feedback event."""
+        body = (
+            f"### Validator Feedback ({now_utc().isoformat()})\n"
+            f"- is_valid: {feedback.is_valid}\n"
+            f"- confidence: {feedback.confidence:.2f}\n"
+            f"- issues: {feedback.issues}\n"
+            f"- improvement: {feedback.improvement}\n\n"
+        )
+        self._append(path, body)
+
     def append_final_summary(self, path: Path, summary: str) -> None:
         """Append final summary and session completion timestamp."""
         body = f"## Final Summary ({now_utc().isoformat()})\n\n{summary}\n\n- Completed At (UTC): {now_utc().isoformat()}\n"
         self._append(path, body)
+
+    def write_result_snapshot(
+        self,
+        *,
+        session_id: str,
+        topic: str,
+        final_summary: str,
+        input_sources: list[str],
+        validation_highlights: list[str] | None = None,
+    ) -> Path:
+        """Write a user-facing final result markdown under out directory."""
+        target_dir = self.result_dir or self.output_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
+        path = target_dir / f"result_{session_id}.md"
+        sources = "\n".join(f"- {name}" for name in input_sources) if input_sources else "- (none)"
+        highlights = "\n".join(f"- {line}" for line in validation_highlights) if validation_highlights else "- (none)"
+        content = (
+            f"# Debate Result {session_id}\n\n"
+            f"- Topic: {topic}\n"
+            f"- Generated At (UTC): {now_utc().isoformat()}\n\n"
+            "## Input Sources\n\n"
+            f"{sources}\n\n"
+            "## Validator Highlights\n\n"
+            f"{highlights}\n\n"
+            "## Final Summary\n\n"
+            f"{final_summary}\n"
+        )
+        path.write_text(content, encoding="utf-8")
+        return path

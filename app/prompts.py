@@ -23,6 +23,12 @@ Produce concise, non-redundant arguments.
 Output must follow JSON schema exactly.
 """
 
+VALIDATOR_SYSTEM_PROMPT = """You are a debate quality validator.
+Evaluate the latest debater claim for logical coherence, topical relevance, and practical usefulness.
+Be strict but constructive.
+Output must follow the JSON schema exactly.
+"""
+
 FINALIZER_SYSTEM_PROMPT = """You are a neutral summarizer.
 Write a short final summary with key claims from both sides and practical takeaways.
 """
@@ -33,7 +39,15 @@ def _render_recent_turns(recent_turns: list[DiscussionTurn]) -> str:
         return "(no turns yet)"
     lines: list[str] = []
     for turn in recent_turns:
-        lines.append(f"- {turn.timestamp.isoformat()} [{turn.role}] {turn.content}")
+        if isinstance(turn, dict):
+            ts = str(turn.get("timestamp", ""))
+            role = str(turn.get("role", ""))
+            content = str(turn.get("content", ""))
+        else:
+            ts = turn.timestamp.isoformat()
+            role = turn.role
+            content = turn.content
+        lines.append(f"- {ts} [{role}] {content}")
     return "\n".join(lines)
 
 
@@ -92,4 +106,25 @@ def build_finalizer_prompt(topic: str, compact_summary: str, recent_turns: list[
         "1) key arguments from A and B\n"
         "2) unresolved points\n"
         "3) recommendation or next actions"
+    )
+
+
+def build_validator_prompt(
+    *,
+    topic: str,
+    speaker: str,
+    claim: str,
+    compact_summary: str,
+    recent_turns: list[DiscussionTurn],
+) -> str:
+    """Create validator prompt for the latest debater claim."""
+    recent = _render_recent_turns(recent_turns)
+    return (
+        f"Topic: {topic}\n"
+        f"Speaker: {speaker}\n"
+        f"Latest claim:\n{claim}\n\n"
+        f"Compact summary:\n{compact_summary or '(empty)'}\n\n"
+        f"Recent turns:\n{recent}\n\n"
+        "Judge whether the latest claim is valid and useful in this debate context. "
+        "Provide concrete issues and one clear improvement suggestion."
     )

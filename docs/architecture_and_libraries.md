@@ -40,6 +40,16 @@
   - ノード単位 = span
   - LLM 呼び出し = generation
   - 障害時 = error event
+  - 接続失敗時は警告を出しつつ無効化して実行継続
+
+### Validator Node（rnj-1:latest）
+
+- 目的: Debater の直前主張を品質評価し、議論の自己修正を促進する
+- 主な利用箇所: `app/nodes/validator.py`
+- 役割:
+  - debater_a / debater_b の直後に実行
+  - `ValidatorFeedback` を state と markdown ログに記録
+  - 議論停止は行わないアドバイザリ運用
 
 ### subprocess（標準ライブラリ）
 
@@ -49,6 +59,23 @@
   - `SEARCH_COMMAND_TEMPLATE` からコマンド構築
   - timeout / returncode / stdout / stderr 管理
   - 次ターン向け digest 作成
+
+### Input Service（Markdown 読み込み）
+
+- 目的: CLI 引数がない場合でも `in/` の Markdown から議論を開始できるようにする
+- 主な利用箇所: `app/services/input_service.py`
+- 役割:
+  - `in/*.md` を全件読み込んで連結（ファイル名昇順）
+  - 議題（topic）を自動決定
+  - 入力ソース一覧を state に保持
+
+### Output Snapshot（最終成果 Markdown）
+
+- 目的: 実行結果をユーザー向けに `out/` に保存する
+- 主な利用箇所: `app/utils/markdown_logger.py`, `app/nodes/finalize.py`
+- 役割:
+  - `logs/` のイベントログとは別に最終成果物を出力
+  - topic / input sources / final summary を1ファイルに集約
 
 ### python-dotenv + pydantic-settings
 

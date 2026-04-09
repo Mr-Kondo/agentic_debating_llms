@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-from app.schemas import DiscussionTurn, FacilitatorDecision, SearchResult
+from app.schemas import DiscussionTurn, FacilitatorDecision, SearchResult, ValidatorFeedback
 
 
 class DiscussionState(TypedDict):
@@ -13,6 +13,7 @@ class DiscussionState(TypedDict):
     topic: str
     transcript: list[DiscussionTurn]
     search_results: list[SearchResult]
+    validation_log: list[ValidatorFeedback]
     compact_summary: str
     turn_count: int
     max_turns: int
@@ -20,6 +21,8 @@ class DiscussionState(TypedDict):
     last_decision: FacilitatorDecision | dict[str, Any]
     final_summary: str | None
     markdown_path: str
+    result_markdown_path: str | None
+    input_sources: list[str]
     session_id: str
     last_error: str | None
 

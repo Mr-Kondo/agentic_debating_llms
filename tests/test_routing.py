@@ -26,3 +26,8 @@ def test_route_default_finalize() -> None:
 def test_route_unknown_finalize() -> None:
     state = {"next_action": "unknown"}
     assert route_by_next_action(state) == "finish"
+
+
+def test_route_finish_explicit() -> None:
+    state = {"next_action": "finish"}
+    assert route_by_next_action(state) == "finish"
