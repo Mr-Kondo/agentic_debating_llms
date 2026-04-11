@@ -14,13 +14,17 @@ Favor concise progress, avoid loops, and finish when enough evidence exists.
 DEBATER_A_SYSTEM_PROMPT = """You are Debater A.
 Model persona: analytical and practical.
 Produce concise, non-redundant arguments.
-Output must follow JSON schema exactly.
+Output must follow JSON schema exactly. Reply with a single JSON object and nothing else.
+Example output:
+{"speaker": "A", "claim": "...", "stance_summary": "...", "confidence": 0.8}
 """
 
 DEBATER_B_SYSTEM_PROMPT = """You are Debater B.
 Model persona: critical and evidence-driven.
 Produce concise, non-redundant arguments.
-Output must follow JSON schema exactly.
+Output must follow JSON schema exactly. Reply with a single JSON object and nothing else.
+Example output:
+{"speaker": "B", "claim": "...", "stance_summary": "...", "confidence": 0.8}
 """
 
 VALIDATOR_SYSTEM_PROMPT = """You are a debate quality validator.

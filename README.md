@@ -2,9 +2,9 @@
 
 Ollama 上の複数ローカル LLM を使って、特定テーマを自律的に議論する LangGraph アプリです。
 
-- Facilitator: `llama3.1:8b`
-- Debater A: `gemma4:8b`
-- Debater B: `qwen3.5:8b`
+- Facilitator: `llama3.1:latest`
+- Debater A: `gemma4:latest`
+- Debater B: `qwen3.5:latest`
 - Validator: `rnj-1:latest`
 - Structured output: Pydantic v2
 - Trace/Observability: Langfuse
@@ -60,13 +60,13 @@ cp .env.example .env
 例:
 
 ```bash
-ollama pull llama3.1:8b
-ollama pull gemma4:8b
-ollama pull qwen3.5:8b
+ollama pull llama3.1:latest
+ollama pull gemma4:latest
+ollama pull qwen3.5:latest
 ollama pull rnj-1:latest
 ```
 
-実環境でタグ名が異なる場合は `.env` のモデル名を差し替えてください。
+モデルタグは `.env` の値が優先されます。実環境でタグ名が異なる場合は `.env` のモデル名を差し替えてください。
 
 ## 実行方法
 
@@ -112,9 +112,20 @@ uv run python -m app.main
 起動時にモデル不足で停止した場合は、表示されたモデルを pull してください。
 
 ```bash
-ollama pull llama3.1:8b
-ollama pull gemma4:8b
-ollama pull qwen3.5:8b
+ollama pull llama3.1:latest
+ollama pull gemma4:latest
+ollama pull qwen3.5:latest
+ollama pull rnj-1:latest
+```
+
+### 1.1 qwen 系で structured output が崩れる場合
+
+このアプリは `qwen3.5:latest` の structured output で thinking 由来の崩れを避けるため、Ollama リクエストで `think=false`（および `options.thinking=false`）を明示しています。
+
+それでも失敗する場合は、まず Ollama 側のモデル更新と再 pull を行ってください。
+
+```bash
+ollama pull qwen3.5:latest
 ```
 
 ### 2. Ollama 404 / endpoint エラー
@@ -174,6 +185,10 @@ uv run pytest
 - `tests/test_routing.py`
 - `tests/test_retry.py`
 - `tests/test_summarizer.py`
+- `tests/test_ollama_client.py`
+- `tests/test_validator.py`
+- `tests/test_input_service.py`
+- `tests/test_output_writer.py`
 
 ## 今後の拡張候補
 

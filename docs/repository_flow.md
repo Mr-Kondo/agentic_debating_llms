@@ -2,7 +2,7 @@
 
 このアプリは CLI 起動から終了まで、以下の順に処理されます。
 
-1. `app.main` が引数（`--topic`, `--max-turns`, `--no-preload`）を受け取る
+1. `app.main` が引数（`--topic`, `--max-turns`, `--continuation-rounds`, `--no-preload`）を受け取る
 2. `--topic` 未指定時は `in/*.md` を全件読込し、議題と背景コンテキストを組み立てる
 3. `initialize_session()` が設定・各サービス・初期 state を構築
 4. `build_graph()` で LangGraph を構築して実行
@@ -11,7 +11,7 @@
 7. debater 系のときは `validator_node()` が直後に主張品質を評価
 8. `summarizer_node()` が context を圧縮して facilitator に戻す
 9. `finish` 判定後、`finalize_node()` で最終要約を生成し、`out/` に成果Markdownを書き出す
-10. `logs/`（詳細イベント）と `out/`（最終成果）を出力して終了
+10. `main` の finally で `end_trace` を実行し、`logs/`（詳細イベント）と `out/`（最終成果）を出力して終了
 
 ## Mermaid フロー図
 
