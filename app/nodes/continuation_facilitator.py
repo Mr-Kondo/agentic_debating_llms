@@ -49,9 +49,7 @@ def continuation_facilitator_node(state: DiscussionState, services) -> dict:
         services.model_manager.ensure_loaded(config.facilitator_model, warmup=True)
 
     try:
-        with services.langfuse.span(
-            "continuation_facilitator", input_data={"prompt": prompt}
-        ) as span:
+        with services.langfuse.span("continuation_facilitator", input_data={"prompt": prompt}) as span:
             decision = run_with_llm_retry(
                 operation=invoke_decision,
                 policy=LLMRetryPolicy(),
@@ -63,6 +61,7 @@ def continuation_facilitator_node(state: DiscussionState, services) -> dict:
                 prompt=prompt,
                 completion=decision.model_dump_json(),
                 metadata={"node": "continuation_facilitator", "cont_turn": cont_turn},
+                usage_details=getattr(services.ollama_client, "_last_usage", None),
             )
         next_cont_turn = cont_turn + 1
     except Exception as exc:

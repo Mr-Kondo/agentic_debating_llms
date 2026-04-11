@@ -64,12 +64,28 @@ def validator_node(state: DiscussionState, services) -> dict:
                 prompt=prompt,
                 completion=feedback.model_dump_json(),
                 metadata={"node": "validator"},
+                usage_details=getattr(services.ollama_client, "_last_usage", None),
             )
 
     markdown_path = Path(state["markdown_path"])
     services.markdown_logger.append_validator_feedback(path=markdown_path, feedback=feedback)
     validation_log = [*state.get("validation_log", []), feedback]
+
+    if feedback.needs_search and state.get("search_enabled", True):
+        return {
+            "validation_log": validation_log,
+            "next_action": "search",
+            "last_decision": {
+                "action": "search",
+                "reason": feedback.search_reason or "Validator requested evidence check.",
+                "search_query": feedback.search_query,
+                "request_source": "validator",
+            },
+            "last_error": None,
+        }
+
     return {
         "validation_log": validation_log,
+        "next_action": "facilitator",
         "last_error": None,
     }

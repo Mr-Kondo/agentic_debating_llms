@@ -5,7 +5,14 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import ContinuationDecision, DebaterResponse, DiscussionTurn, FacilitatorDecision, SearchResult, ValidatorFeedback
+from app.schemas import (
+    ContinuationDecision,
+    DebaterResponse,
+    DiscussionTurn,
+    FacilitatorDecision,
+    SearchResult,
+    ValidatorFeedback,
+)
 
 
 def test_facilitator_decision_valid() -> None:
@@ -29,6 +36,18 @@ def test_debater_response_confidence_range() -> None:
             claim="claim",
             stance_summary="summary",
             confidence=1.5,
+        )
+
+
+def test_debater_response_requires_query_when_needs_search() -> None:
+    with pytest.raises(ValidationError):
+        DebaterResponse(
+            speaker="A",
+            claim="claim",
+            stance_summary="summary",
+            confidence=0.8,
+            needs_search=True,
+            search_query=None,
         )
 
 
@@ -67,6 +86,18 @@ def test_validator_feedback_invalid_confidence() -> None:
             confidence=1.2,
             issues="issue",
             improvement="fix",
+        )
+
+
+def test_validator_feedback_requires_query_when_needs_search() -> None:
+    with pytest.raises(ValidationError):
+        ValidatorFeedback(
+            is_valid=False,
+            confidence=0.2,
+            issues="need external evidence",
+            improvement="search for objective metrics",
+            needs_search=True,
+            search_query="",
         )
 
 

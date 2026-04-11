@@ -23,9 +23,12 @@ class Config(BaseSettings):
 
     max_turns: int = Field(default=8, alias="MAX_TURNS", ge=1, le=50)
     search_command_template: str = Field(
-        default='ddgs text "{query}" --max-results 5',
+        default='ddgs text -q "{query}" --max-results 5',
         alias="SEARCH_COMMAND_TEMPLATE",
     )
+    search_backend: str = Field(default="api", alias="SEARCH_BACKEND")
+    search_max_results: int = Field(default=5, alias="SEARCH_MAX_RESULTS", ge=1, le=25)
+    search_query_optimizer: str = Field(default="none", alias="SEARCH_QUERY_OPTIMIZER")
     search_timeout_seconds: int = Field(default=20, alias="SEARCH_TIMEOUT_SECONDS", ge=1)
     ollama_timeout_seconds: int = Field(default=60, alias="OLLAMA_TIMEOUT_SECONDS", ge=5)
 
@@ -52,6 +55,22 @@ class Config(BaseSettings):
         if "{query}" not in value:
             raise ValueError("SEARCH_COMMAND_TEMPLATE must include '{query}'.")
         return value
+
+    @field_validator("search_backend")
+    @classmethod
+    def validate_search_backend(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"api", "cli"}:
+            raise ValueError("SEARCH_BACKEND must be either 'api' or 'cli'.")
+        return normalized
+
+    @field_validator("search_query_optimizer")
+    @classmethod
+    def validate_search_query_optimizer(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"none", "dspy"}:
+            raise ValueError("SEARCH_QUERY_OPTIMIZER must be either 'none' or 'dspy'.")
+        return normalized
 
     @property
     def markdown_log_dir_path(self) -> Path:
