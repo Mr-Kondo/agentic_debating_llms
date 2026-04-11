@@ -49,7 +49,7 @@ def search_node(state: DiscussionState, services) -> dict:
     turn = DiscussionTurn(role="Search", content=turn_note, timestamp=now_utc())
     return {
         "search_results": search_results,
-        "turn_count": state["turn_count"] + 1,
+        "turn_count": state["turn_count"] if state.get("continuation_mode", False) else state["turn_count"] + 1,
         "last_error": last_error,
         "transcript": [*state["transcript"], turn],
     }

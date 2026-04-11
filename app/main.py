@@ -21,6 +21,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip preload and warmup of Ollama models",
     )
+    parser.add_argument(
+        "--continuation-rounds",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Post-conclusion continuation rounds (0 = disabled)",
+    )
     return parser.parse_args()
 
 
@@ -31,6 +38,9 @@ def main() -> None:
 
     if args.max_turns is not None:
         config.max_turns = args.max_turns
+
+    if args.continuation_rounds is not None:
+        config.continuation_rounds = args.continuation_rounds
 
     resolved_topic = args.topic
     initial_compact_summary = ""

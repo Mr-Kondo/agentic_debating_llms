@@ -9,8 +9,9 @@
 - 役割:
   - `START -> facilitator` から開始
   - `next_action` による条件分岐
-  - `debater/search -> summarizer -> facilitator` ループ
-  - `finish -> finalize -> END` で終了
+  - `debater -> validator -> summarizer` と `search -> summarizer` のループ
+  - continuation 有効時は `finalize -> continuation_facilitator` へ遷移
+  - `finalize_continuation -> END` で終了
 
 ### Pydantic v2
 
@@ -18,7 +19,9 @@
 - 主な利用箇所: `app/schemas.py`
 - 役割:
   - `FacilitatorDecision`
+  - `ContinuationDecision`
   - `DebaterResponse`
+  - `ValidatorFeedback`
   - `SearchResult`
   - `DiscussionTurn`
 
@@ -30,6 +33,8 @@
   - `/api/generate` で structured / text generation
   - `/api/ps` でロード状態確認
   - keep_alive / preload / warmup / unload の制御
+  - qwen 系モデルの structured 崩れ対策として `think=false` を付与
+  - `<think>` 除去、コードフェンス抽出、JSON抽出のフォールバックパース
 
 ### Langfuse Python SDK
 
@@ -59,6 +64,7 @@
   - `SEARCH_COMMAND_TEMPLATE` からコマンド構築
   - timeout / returncode / stdout / stderr 管理
   - 次ターン向け digest 作成
+  - CLI 未導入（returncode 127）時は例外を記録しつつ議論本体は継続
 
 ### Input Service（Markdown 読み込み）
 

@@ -56,4 +56,36 @@ def finalize_node(state: DiscussionState, services) -> dict:
         input_sources=state.get("input_sources", []),
         validation_highlights=[h for h in highlights if h][:3],
     )
-    return {"final_summary": summary, "result_markdown_path": str(result_path)}
+
+    continuation_max_turns = state.get("continuation_max_turns", 0)
+    return {
+        "final_summary": summary,
+        "result_markdown_path": str(result_path),
+        "continuation_mode": continuation_max_turns > 0,
+    }
+
+
+def finalize_continuation_node(state: DiscussionState, services) -> dict:
+    """Append continuation summary to markdown and update the result snapshot."""
+    markdown_path = Path(state["markdown_path"])
+    continuation_note = (
+        f"## Continuation Phase Summary\n\n"
+        f"Continuation rounds completed: {state.get('continuation_turn_count', 0)}\n\n"
+        f"{state['compact_summary']}\n"
+    )
+    services.markdown_logger._append(markdown_path, continuation_note)
+
+    highlights = []
+    for item in state.get("validation_log", []):
+        if isinstance(item, dict):
+            highlights.append(str(item.get("issues", "")))
+        else:
+            highlights.append(item.issues)
+    result_path = services.markdown_logger.write_result_snapshot(
+        session_id=state["session_id"],
+        topic=state["topic"],
+        final_summary=state.get("final_summary") or state["compact_summary"],
+        input_sources=state.get("input_sources", []),
+        validation_highlights=[h for h in highlights if h][:3],
+    )
+    return {"result_markdown_path": str(result_path), "continuation_mode": False}
