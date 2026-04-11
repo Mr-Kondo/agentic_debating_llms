@@ -2,9 +2,9 @@
 
 Ollama 上の複数ローカル LLM を使って、特定テーマを自律的に議論する LangGraph アプリです。
 
-- Facilitator: `llama3.1:8b`
-- Debater A: `gemma4:8b`
-- Debater B: `qwen3.5:8b`
+- Facilitator: `llama3.1:latest`
+- Debater A: `gemma4:latest`
+- Debater B: `qwen3.5:latest`
 - Validator: `rnj-1:latest`
 - Structured output: Pydantic v2
 - Trace/Observability: Langfuse
@@ -47,6 +47,7 @@ cp .env.example .env
 - `VALIDATOR_MODEL`: Debater 発言の品質検証モデル
 - `MODEL_KEEP_ALIVE`: Ollama keep_alive
 - `MAX_TURNS`: 最大ターン数
+- `CONTINUATION_ROUNDS`: 結論後の継続議論ラウンド数（0 = 無効、既定値）
 - `SEARCH_COMMAND_TEMPLATE`: 検索 CLI テンプレート（`{query}` 必須）
 - `MARKDOWN_LOG_DIR`: ログ保存ディレクトリ
 - `INPUT_DIR`: `--topic` 未指定時に読む Markdown 入力ディレクトリ
@@ -59,13 +60,13 @@ cp .env.example .env
 例:
 
 ```bash
-ollama pull llama3.1:8b
-ollama pull gemma4:8b
-ollama pull qwen3.5:8b
+ollama pull llama3.1:latest
+ollama pull gemma4:latest
+ollama pull qwen3.5:latest
 ollama pull rnj-1:latest
 ```
 
-実環境でタグ名が異なる場合は `.env` のモデル名を差し替えてください。
+モデルタグは `.env` の値が優先されます。実環境でタグ名が異なる場合は `.env` のモデル名を差し替えてください。
 
 ## 実行方法
 
@@ -78,6 +79,7 @@ uv run python -m app.main --topic "ローカルLLMは企業内ナレッジ活用
 オプション:
 
 - `--max-turns 10`: 最大ターン上書き
+- `--continuation-rounds 3`: 結論後の継続議論ラウンド数（0 でデフォルト無効）
 - `--no-preload`: セッション開始時の preload/warmup 無効化
 
 ### in/ からの自動入力
@@ -110,9 +112,20 @@ uv run python -m app.main
 起動時にモデル不足で停止した場合は、表示されたモデルを pull してください。
 
 ```bash
-ollama pull llama3.1:8b
-ollama pull gemma4:8b
-ollama pull qwen3.5:8b
+ollama pull llama3.1:latest
+ollama pull gemma4:latest
+ollama pull qwen3.5:latest
+ollama pull rnj-1:latest
+```
+
+### 1.1 qwen 系で structured output が崩れる場合
+
+このアプリは `qwen3.5:latest` の structured output で thinking 由来の崩れを避けるため、Ollama リクエストで `think=false`（および `options.thinking=false`）を明示しています。
+
+それでも失敗する場合は、まず Ollama 側のモデル更新と再 pull を行ってください。
+
+```bash
+ollama pull qwen3.5:latest
 ```
 
 ### 2. Ollama 404 / endpoint エラー
@@ -172,12 +185,16 @@ uv run pytest
 - `tests/test_routing.py`
 - `tests/test_retry.py`
 - `tests/test_summarizer.py`
+- `tests/test_ollama_client.py`
+- `tests/test_validator.py`
+- `tests/test_input_service.py`
+- `tests/test_output_writer.py`
 
 ## 今後の拡張候補
 
-- DSPy ベースの Facilitator/Summarizer 差し替え
+- DSPy ベースの継続議論判断の自動最適化（`app/dspy_modules/continuation_decider.py`）
 - Search digest の高度化（抽出要約、重複除去）
-- 評価用メトリクス（議論収束度、主張多様性）
+- 評価用メトリクス（議論収束度、主張多様性、継続ラウンドの新規性スコア）
 - 非同期実行と並列検索
 
 ## 詳細ドキュメント

@@ -25,6 +25,10 @@ class DiscussionState(TypedDict):
     input_sources: list[str]
     session_id: str
     last_error: str | None
+    # Continuation mode fields (active only when continuation_max_turns > 0)
+    continuation_mode: bool
+    continuation_turn_count: int
+    continuation_max_turns: int
 
 
 def get_recent_turns(state: DiscussionState, count: int) -> list[DiscussionTurn]:

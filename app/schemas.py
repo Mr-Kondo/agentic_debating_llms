@@ -18,10 +18,20 @@ class FacilitatorDecision(BaseModel):
     terminate_reason: str | None = Field(default=None, max_length=300)
 
 
+class ContinuationDecision(BaseModel):
+    """Structured decision emitted by the continuation facilitator."""
+
+    action: Literal["continue_a", "continue_b", "search", "conclude"]
+    reason: str = Field(min_length=1, max_length=500)
+    focus_instruction: str | None = Field(default=None, max_length=500)
+    search_query: str | None = Field(default=None, max_length=200)
+    conclude_reason: str | None = Field(default=None, max_length=300)
+
+
 class DebaterResponse(BaseModel):
     """Structured response emitted by a debater model."""
 
-    speaker: Literal["A", "B"]
+    speaker: str  # expected "A" or "B"; enforced in debater node
     claim: str = Field(min_length=1, max_length=1200)
     stance_summary: str = Field(min_length=1, max_length=250)
     confidence: float = Field(ge=0.0, le=1.0)

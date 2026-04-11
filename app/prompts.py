@@ -14,13 +14,17 @@ Favor concise progress, avoid loops, and finish when enough evidence exists.
 DEBATER_A_SYSTEM_PROMPT = """You are Debater A.
 Model persona: analytical and practical.
 Produce concise, non-redundant arguments.
-Output must follow JSON schema exactly.
+Output must follow JSON schema exactly. Reply with a single JSON object and nothing else.
+Example output:
+{"speaker": "A", "claim": "...", "stance_summary": "...", "confidence": 0.8}
 """
 
 DEBATER_B_SYSTEM_PROMPT = """You are Debater B.
 Model persona: critical and evidence-driven.
 Produce concise, non-redundant arguments.
-Output must follow JSON schema exactly.
+Output must follow JSON schema exactly. Reply with a single JSON object and nothing else.
+Example output:
+{"speaker": "B", "claim": "...", "stance_summary": "...", "confidence": 0.8}
 """
 
 VALIDATOR_SYSTEM_PROMPT = """You are a debate quality validator.
@@ -31,6 +35,17 @@ Output must follow the JSON schema exactly.
 
 FINALIZER_SYSTEM_PROMPT = """You are a neutral summarizer.
 Write a short final summary with key claims from both sides and practical takeaways.
+"""
+
+CONTINUATION_FACILITATOR_SYSTEM_PROMPT = """You are a post-conclusion challenger.
+The debate has produced an initial conclusion. Your role is to direct further scrutiny by finding:
+1. Logical gaps or unstated assumptions in the conclusion
+2. Edge cases or exceptions not adequately covered
+3. Practical implementation risks or failure modes
+4. Counterexamples or dissenting perspectives worth exploring
+Do NOT repeat points already made in the transcript. Focus on genuine blind spots.
+Decide next action: continue_a, continue_b, search, or conclude.
+Output must follow the provided JSON schema exactly.
 """
 
 
@@ -127,4 +142,29 @@ def build_validator_prompt(
         f"Recent turns:\n{recent}\n\n"
         "Judge whether the latest claim is valid and useful in this debate context. "
         "Provide concrete issues and one clear improvement suggestion."
+    )
+
+
+def build_continuation_facilitator_prompt(
+    topic: str,
+    final_summary: str,
+    compact_summary: str,
+    recent_turns: list[DiscussionTurn],
+    continuation_turn_count: int,
+    continuation_max_turns: int,
+) -> str:
+    """Create continuation facilitator prompt to challenge the existing conclusion."""
+    recent = _render_recent_turns(recent_turns)
+    return (
+        f"Topic: {topic}\n"
+        f"Continuation round: {continuation_turn_count + 1}/{continuation_max_turns}\n\n"
+        f"Initial conclusion:\n{final_summary or '(none)'}\n\n"
+        f"Discussion summary so far:\n{compact_summary or '(empty)'}\n\n"
+        f"Recent turns:\n{recent}\n\n"
+        "Identify a genuine blind spot, edge case, or counterexample NOT yet covered.\n"
+        "- Use continue_a or continue_b to direct a debater to explore a specific gap.\n"
+        "- Use search when concrete external evidence is needed.\n"
+        "- Use conclude when no significant blind spots remain or rounds are exhausted.\n"
+        "- Provide focus_instruction describing exactly what gap to explore.\n"
+        "- Do NOT revisit points already discussed."
     )

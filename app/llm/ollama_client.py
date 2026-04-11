@@ -77,11 +77,101 @@ class OllamaClient:
         return data
 
     @staticmethod
+    def _strip_think_tags(text: str) -> str:
+        """Remove only leading <think>...</think> reasoning blocks.
+
+        This intentionally strips balanced think blocks only at the beginning of
+        the model response so literal ``<think>`` strings inside the actual JSON
+        or text content are preserved.
+        """
+        open_tag = "<think>"
+        close_tag = "</think>"
+        length = len(text)
+        index = 0
+
+        while index < length and text[index].isspace():
+            index += 1
+
+        removed_any = False
+
+        while text.startswith(open_tag, index):
+            removed_any = True
+            block_start = index
+            depth = 0
+
+            while index < length:
+                if text.startswith(open_tag, index):
+                    depth += 1
+                    index += len(open_tag)
+                    continue
+                if text.startswith(close_tag, index):
+                    depth -= 1
+                    index += len(close_tag)
+                    if depth == 0:
+                        while index < length and text[index].isspace():
+                            index += 1
+                        break
+                    continue
+                index += 1
+            else:
+                return text[block_start:].strip() if removed_any else text.strip()
+
+        if not removed_any:
+            return text.strip()
+
+        return text[index:].strip()
+
+    @staticmethod
     def _extract_text_response(data: dict[str, Any]) -> str:
         response_text = data.get("response")
-        if not isinstance(response_text, str):
-            raise StructuredOutputValidationError("Ollama response does not include text in 'response'.")
-        return response_text.strip()
+        if isinstance(response_text, str) and response_text.strip():
+            return response_text.strip()
+
+        for key in ("output", "content", "text"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        message_obj = data.get("message")
+        if isinstance(message_obj, dict):
+            value = message_obj.get("content")
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        raise StructuredOutputValidationError(
+            "Ollama response did not include usable text. "
+            "response was empty or missing; this can happen when model thinking output is enabled."
+        )
+
+    @staticmethod
+    def _extract_json_object(text: str) -> str | None:
+        """Try to extract a JSON object from text that may contain prose or code fences.
+
+        Handles:
+        - ```json ... ``` and ``` ... ``` code fences
+        - Text before/after a bare ``{...}`` object
+        Returns the extracted JSON string, or None if no object found.
+        """
+        import re
+
+        # Strip code fences first
+        fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+        if fence_match:
+            return fence_match.group(1).strip()
+
+        # Find the outermost {...} by depth traversal
+        start = text.find("{")
+        if start == -1:
+            return None
+        depth = 0
+        for i, ch in enumerate(text[start:], start):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start : i + 1]
+        return None
 
     def generate_structured(
         self,
@@ -99,6 +189,8 @@ class OllamaClient:
             "prompt": user_prompt,
             "stream": False,
             "format": schema_model.model_json_schema(),
+            "think": False,
+            "options": {"thinking": False},
         }
         if keep_alive:
             payload["keep_alive"] = keep_alive
@@ -106,13 +198,31 @@ class OllamaClient:
         data = self._request("/api/generate", payload)
         raw_text = self._extract_text_response(data)
 
+        # Attempt 1: direct parse
         try:
             json_payload = json.loads(raw_text)
             return schema_model.model_validate(json_payload)
-        except (json.JSONDecodeError, ValidationError) as exc:
-            raise StructuredOutputValidationError(
-                f"Failed to parse structured output for model {model}: {raw_text[:300]}"
-            ) from exc
+        except (json.JSONDecodeError, ValidationError):
+            pass
+
+        # Attempt 2: strip leading <think>...</think> blocks
+        candidate = self._strip_think_tags(raw_text)
+        try:
+            json_payload = json.loads(candidate)
+            return schema_model.model_validate(json_payload)
+        except (json.JSONDecodeError, ValidationError):
+            pass
+
+        # Attempt 3: extract embedded JSON object (handles code fences, surrounding prose)
+        extracted = self._extract_json_object(candidate)
+        if extracted is not None:
+            try:
+                json_payload = json.loads(extracted)
+                return schema_model.model_validate(json_payload)
+            except (json.JSONDecodeError, ValidationError):
+                pass
+
+        raise StructuredOutputValidationError(f"Failed to parse structured output for model {model}: {raw_text}")
 
     def generate_text(
         self,
@@ -128,12 +238,14 @@ class OllamaClient:
             "system": system_prompt,
             "prompt": user_prompt,
             "stream": False,
+            "think": False,
+            "options": {"thinking": False},
         }
         if keep_alive:
             payload["keep_alive"] = keep_alive
 
         data = self._request("/api/generate", payload)
-        return self._extract_text_response(data)
+        return self._strip_think_tags(self._extract_text_response(data))
 
     def list_loaded_models(self) -> list[str]:
         """Return model names reported by /api/ps."""
