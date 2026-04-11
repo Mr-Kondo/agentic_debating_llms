@@ -68,8 +68,8 @@ def _debater_node(state: DiscussionState, services, speaker: str) -> dict:
             prompt=prompt,
             completion=response.model_dump_json(),
             metadata={"node": f"debater_{speaker.lower()}"},
+            usage_details=getattr(services.ollama_client, "_last_usage", None),
         )
-
     turn = DiscussionTurn(
         role=f"Debater {speaker}",
         content=response.claim,
@@ -80,9 +80,24 @@ def _debater_node(state: DiscussionState, services, speaker: str) -> dict:
     markdown_path = Path(state["markdown_path"])
     services.markdown_logger.append_debater_utterance(path=markdown_path, response=response)
 
+    if response.needs_search and state.get("search_enabled", True):
+        return {
+            "transcript": transcript,
+            "turn_count": state["turn_count"] if state.get("continuation_mode", False) else state["turn_count"] + 1,
+            "next_action": "search",
+            "last_decision": {
+                "action": "search",
+                "reason": response.search_reason or f"Debater {speaker} requested external evidence.",
+                "search_query": response.search_query,
+                "request_source": f"debater_{speaker.lower()}",
+            },
+            "last_error": None,
+        }
+
     return {
         "transcript": transcript,
         "turn_count": state["turn_count"] if state.get("continuation_mode", False) else state["turn_count"] + 1,
+        "next_action": "speak_b" if speaker == "A" else "speak_a",
         "last_error": None,
     }
 

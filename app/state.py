@@ -13,6 +13,8 @@ class DiscussionState(TypedDict):
     topic: str
     transcript: list[DiscussionTurn]
     search_results: list[SearchResult]
+    search_enabled: bool
+    search_status_message: str | None
     validation_log: list[ValidatorFeedback]
     compact_summary: str
     turn_count: int
@@ -36,6 +38,19 @@ def get_recent_turns(state: DiscussionState, count: int) -> list[DiscussionTurn]
     if count <= 0:
         return []
     return state["transcript"][-count:]
+
+
+def count_debater_turns(state: DiscussionState) -> tuple[int, int]:
+    """Return (a_count, b_count) of Debater turns recorded so far."""
+    a_count = 0
+    b_count = 0
+    for turn in state.get("transcript", []):
+        role = turn.role if hasattr(turn, "role") else turn.get("role", "")
+        if role == "Debater A":
+            a_count += 1
+        elif role == "Debater B":
+            b_count += 1
+    return a_count, b_count
 
 
 def latest_search_digest(state: DiscussionState) -> str:

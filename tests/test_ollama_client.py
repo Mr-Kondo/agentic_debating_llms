@@ -343,3 +343,56 @@ class TestThinkingControlPayload:
                     schema_model=_Simple,
                 )
         assert "thinking output" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# usage tracking — _last_usage populated after each call
+# ---------------------------------------------------------------------------
+
+
+def _mock_response_with_usage(raw: str, prompt_tokens: int, completion_tokens: int) -> dict:
+    return {
+        "response": raw,
+        "model": "test",
+        "prompt_eval_count": prompt_tokens,
+        "eval_count": completion_tokens,
+    }
+
+
+class TestUsageTracking:
+    def test_generate_structured_stores_usage(self):
+        client = _make_client()
+        assert client._last_usage is None
+        with patch.object(
+            OllamaClient,
+            "_request",
+            return_value=_mock_response_with_usage('{"value": "ok"}', 10, 20),
+        ):
+            client.generate_structured(
+                model="test-model",
+                system_prompt="sys",
+                user_prompt="usr",
+                schema_model=_Simple,
+            )
+        assert client._last_usage == {"prompt_tokens": 10, "completion_tokens": 20}
+
+    def test_generate_text_stores_usage(self):
+        client = _make_client()
+        with patch.object(
+            OllamaClient,
+            "_request",
+            return_value=_mock_response_with_usage("hello", 5, 3),
+        ):
+            client.generate_text(model="test-model", system_prompt="sys", user_prompt="usr")
+        assert client._last_usage == {"prompt_tokens": 5, "completion_tokens": 3}
+
+    def test_missing_token_counts_defaults_to_zero(self):
+        client = _make_client()
+        with patch.object(OllamaClient, "_request", return_value=_mock_response('{"value": "x"}')):
+            client.generate_structured(model="test-model", system_prompt="sys", user_prompt="usr", schema_model=_Simple)
+        assert client._last_usage == {"prompt_tokens": 0, "completion_tokens": 0}
+
+    def test_extract_usage_static_method(self):
+        data = {"prompt_eval_count": 42, "eval_count": 58}
+        usage = OllamaClient._extract_usage(data)
+        assert usage == {"prompt_tokens": 42, "completion_tokens": 58}

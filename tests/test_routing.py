@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from app.graph import route_by_next_action, route_after_summarizer, route_after_finalize, route_continuation_next_action
+from app.graph import (
+    route_after_debater,
+    route_after_finalize,
+    route_after_summarizer,
+    route_after_validator,
+    route_by_next_action,
+    route_continuation_next_action,
+)
 
 
 def test_route_speak_a() -> None:
@@ -33,7 +40,28 @@ def test_route_finish_explicit() -> None:
     assert route_by_next_action(state) == "finish"
 
 
+def test_route_after_debater_search() -> None:
+    state = {"next_action": "search"}
+    assert route_after_debater(state) == "search"
+
+
+def test_route_after_debater_default_validator() -> None:
+    state = {"next_action": "speak_b"}
+    assert route_after_debater(state) == "validator"
+
+
+def test_route_after_validator_search() -> None:
+    state = {"next_action": "search"}
+    assert route_after_validator(state) == "search"
+
+
+def test_route_after_validator_default_summarizer() -> None:
+    state = {"next_action": "facilitator"}
+    assert route_after_validator(state) == "summarizer"
+
+
 # Continuation routing tests
+
 
 def test_route_after_summarizer_normal_mode() -> None:
     state = {"continuation_mode": False}
@@ -52,6 +80,7 @@ def test_route_after_summarizer_default_no_continuation() -> None:
 
 def test_route_after_finalize_no_continuation() -> None:
     from langgraph.graph import END
+
     state = {"continuation_max_turns": 0}
     assert route_after_finalize(state) == END
 
@@ -63,6 +92,7 @@ def test_route_after_finalize_with_continuation() -> None:
 
 def test_route_after_finalize_default_no_continuation() -> None:
     from langgraph.graph import END
+
     state = {}
     assert route_after_finalize(state) == END
 

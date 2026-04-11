@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
 import httpx
@@ -34,6 +34,17 @@ class OllamaClient:
 
     base_url: str
     timeout_seconds: int = 60
+    _last_usage: dict[str, int] | None = field(default=None, init=False, repr=False)
+
+    @staticmethod
+    def _extract_usage(data: dict[str, Any]) -> dict[str, int]:
+        """Extract token counts from Ollama response data."""
+        prompt_tokens = data.get("prompt_eval_count") or 0
+        completion_tokens = data.get("eval_count") or 0
+        return {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+        }
 
     @staticmethod
     def _looks_like_model_not_found(message: str) -> bool:
@@ -196,6 +207,7 @@ class OllamaClient:
             payload["keep_alive"] = keep_alive
 
         data = self._request("/api/generate", payload)
+        self._last_usage = self._extract_usage(data)
         raw_text = self._extract_text_response(data)
 
         # Attempt 1: direct parse
@@ -245,6 +257,7 @@ class OllamaClient:
             payload["keep_alive"] = keep_alive
 
         data = self._request("/api/generate", payload)
+        self._last_usage = self._extract_usage(data)
         return self._strip_think_tags(self._extract_text_response(data))
 
     def list_loaded_models(self) -> list[str]:

@@ -127,6 +127,7 @@ class LangfuseService:
         prompt: str,
         completion: str,
         metadata: dict[str, Any] | None = None,
+        usage_details: dict[str, int] | None = None,
     ) -> None:
         """Record LLM generation under a span when possible."""
         if not self.enabled:
@@ -137,15 +138,18 @@ class LangfuseService:
 
         try:
             if hasattr(self._client, "start_observation"):
-                generation = self._client.start_observation(
-                    trace_context={"trace_id": self._trace_id},
-                    name="ollama-generation",
-                    as_type="generation",
-                    model=model,
-                    input=prompt,
-                    output=completion,
-                    metadata=metadata or {},
-                )
+                kwargs: dict[str, Any] = {
+                    "trace_context": {"trace_id": self._trace_id},
+                    "name": "ollama-generation",
+                    "as_type": "generation",
+                    "model": model,
+                    "input": prompt,
+                    "output": completion,
+                    "metadata": metadata or {},
+                }
+                if usage_details is not None:
+                    kwargs["usage_details"] = usage_details
+                generation = self._client.start_observation(**kwargs)
                 if hasattr(generation, "end"):
                     generation.end()
         except Exception as exc:
