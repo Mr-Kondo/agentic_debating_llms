@@ -163,15 +163,22 @@ LANGFUSE_SECRET_KEY=...
 
 Langfuse 接続に失敗した場合、アプリは停止せずに Langfuse を無効化して継続します。失敗理由は標準エラーに `[langfuse] ...` として表示されます。
 
-## 検索 CLI の設定
+## 検索設定（API-first）
 
-既定例は `ddgs` です。
+既定では `ddgs` Python API を使います。
 
 ```env
-SEARCH_COMMAND_TEMPLATE=ddgs text "{query}" --max-results 5
+SEARCH_BACKEND=api
+SEARCH_MAX_RESULTS=5
+SEARCH_QUERY_OPTIMIZER=none
+SEARCH_COMMAND_TEMPLATE=ddgs text -q "{query}" --max-results 5
 ```
 
-他 CLI に変更する場合も `{query}` プレースホルダを必ず含めてください。
+- `SEARCH_BACKEND=api`: ddgs Python API を利用（推奨）
+- `SEARCH_BACKEND=cli`: 外部 CLI を利用（互換モード）。この場合のみ `SEARCH_COMMAND_TEMPLATE` を使用
+- `SEARCH_QUERY_OPTIMIZER=dspy`: DSPy が利用可能な場合に検索クエリを最適化（失敗時は元クエリで継続）
+
+CLI モードを使う場合は `ddgs` で `-q`（または `--query`）が必須です。非0終了が続く場合はテンプレートの引数順と必須オプションを確認してください。
 
 ## テスト実行方法
 

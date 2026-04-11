@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import shlex
+import shutil
+import subprocess
 from uuid import uuid4
 
 from app.config import Config
@@ -67,7 +70,49 @@ def initialize_session(
         command_template=config.search_command_template,
         timeout_seconds=config.search_timeout_seconds,
         digester=DefaultSearchDigester(),
+        backend=config.search_backend,
+        max_results=config.search_max_results,
     )
+
+    search_enabled = True
+    search_status_message: str | None = None
+    try:
+        if config.search_backend == "api":
+            try:
+                import ddgs  # noqa: F401
+            except Exception:
+                import duckduckgo_search  # noqa: F401  # pragma: no cover - compatibility path
+        else:
+            probe_command = shlex.split(config.search_command_template.format(query="probe"))
+            probe_binary = probe_command[0] if probe_command else ""
+            if not probe_binary:
+                search_enabled = False
+                search_status_message = "Search is disabled: SEARCH_COMMAND_TEMPLATE produced an empty command."
+            elif shutil.which(probe_binary) is None:
+                search_enabled = False
+                search_status_message = (
+                    f"Search is disabled: CLI binary '{probe_binary}' was not found in PATH. "
+                    "Install the CLI or update SEARCH_COMMAND_TEMPLATE."
+                )
+            elif probe_binary == "ddgs":
+                # Validate ddgs subcommand semantics early to avoid runtime retries on config errors.
+                ddgs_probe = subprocess.run(
+                    [probe_binary, "text", "--help"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=False,
+                )
+                if ddgs_probe.returncode != 0:
+                    error_excerpt = " ".join(ddgs_probe.stderr.strip().split()) or "ddgs text --help failed"
+                    search_enabled = False
+                    search_status_message = f"Search is disabled: ddgs CLI probe failed. stderr={error_excerpt}"
+    except Exception as exc:
+        search_enabled = False
+        if config.search_backend == "api":
+            search_status_message = f"Search is disabled: failed to initialize SEARCH_BACKEND=api ({exc})."
+        else:
+            search_status_message = f"Search is disabled: failed to parse SEARCH_COMMAND_TEMPLATE ({exc})."
 
     summarizer = RuleBasedSummarizer(recent_turns=config.summary_recent_turns)
 
@@ -114,6 +159,8 @@ def initialize_session(
         "topic": topic,
         "transcript": [],
         "search_results": [],
+        "search_enabled": search_enabled,
+        "search_status_message": search_status_message,
         "validation_log": [],
         "compact_summary": initial_compact_summary,
         "turn_count": 0,

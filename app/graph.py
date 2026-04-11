@@ -26,6 +26,20 @@ def route_by_next_action(state: DiscussionState) -> str:
     return "finish"
 
 
+def route_after_debater(state: DiscussionState) -> str:
+    """Route debater output either to search or validator."""
+    if state.get("next_action") == "search":
+        return "search"
+    return "validator"
+
+
+def route_after_validator(state: DiscussionState) -> str:
+    """Route validator output either to search or summarizer."""
+    if state.get("next_action") == "search":
+        return "search"
+    return "summarizer"
+
+
 def route_after_summarizer(state: DiscussionState) -> str:
     """Route to continuation facilitator when in continuation mode, else regular facilitator."""
     if state.get("continuation_mode", False):
@@ -78,9 +92,30 @@ def build_graph(services):
             "finish": "finish",
         },
     )
-    graph.add_edge("debater_a", "validator")
-    graph.add_edge("debater_b", "validator")
-    graph.add_edge("validator", "summarizer")
+    graph.add_conditional_edges(
+        "debater_a",
+        route_after_debater,
+        {
+            "search": "search",
+            "validator": "validator",
+        },
+    )
+    graph.add_conditional_edges(
+        "debater_b",
+        route_after_debater,
+        {
+            "search": "search",
+            "validator": "validator",
+        },
+    )
+    graph.add_conditional_edges(
+        "validator",
+        route_after_validator,
+        {
+            "search": "search",
+            "summarizer": "summarizer",
+        },
+    )
     graph.add_edge("search", "summarizer")
     graph.add_conditional_edges(
         "summarizer",

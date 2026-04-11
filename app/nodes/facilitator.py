@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.prompts import FACILITATOR_SYSTEM_PROMPT, build_facilitator_prompt
 from app.schemas import FacilitatorDecision
-from app.state import DiscussionState, get_recent_turns, latest_search_digest
+from app.state import DiscussionState, count_debater_turns, get_recent_turns, latest_search_digest
 from app.utils.retry import LLMRetryPolicy, run_with_llm_retry
 
 
@@ -29,6 +29,7 @@ def facilitator_node(state: DiscussionState, services) -> dict:
             "next_action": decision.action,
         }
 
+    a_count, b_count = count_debater_turns(state)
     prompt = build_facilitator_prompt(
         topic=state["topic"],
         compact_summary=state["compact_summary"],
@@ -36,6 +37,9 @@ def facilitator_node(state: DiscussionState, services) -> dict:
         search_digest=latest_search_digest(state),
         turn_count=state["turn_count"],
         max_turns=state["max_turns"],
+        search_available=state.get("search_enabled", True),
+        a_count=a_count,
+        b_count=b_count,
     )
 
     def invoke_decision() -> FacilitatorDecision:
@@ -63,6 +67,7 @@ def facilitator_node(state: DiscussionState, services) -> dict:
                 prompt=prompt,
                 completion=decision.model_dump_json(),
                 metadata={"node": "facilitator"},
+                usage_details=getattr(services.ollama_client, "_last_usage", None),
             )
     except Exception as exc:
         services.langfuse.log_error(str(exc), error_type=type(exc).__name__)
@@ -74,6 +79,23 @@ def facilitator_node(state: DiscussionState, services) -> dict:
         last_error = f"facilitator_error:{exc}"
     else:
         last_error = None
+
+    if not state.get("search_enabled", True) and decision.action == "search":
+        fallback_action = "speak_a" if state["turn_count"] % 2 == 0 else "speak_b"
+        decision = FacilitatorDecision(
+            action=fallback_action,
+            reason=(f"Search is unavailable; replaced search action with {fallback_action} to keep debate progressing."),
+            focus_instruction=decision.focus_instruction,
+        )
+
+    # Speaker balance guard: ensure Debater B gets a turn when A has spoken but B hasn't.
+    a_count, b_count = count_debater_turns(state)
+    if b_count == 0 and a_count > 0 and decision.action in ("speak_a", "search", "finish"):
+        decision = FacilitatorDecision(
+            action="speak_b",
+            reason="Speaker balance correction: Debater B has not spoken yet.",
+            focus_instruction=decision.focus_instruction or "Present your opening argument.",
+        )
 
     markdown_path = Path(state["markdown_path"])
     services.markdown_logger.append_facilitator_decision(path=markdown_path, decision=decision)

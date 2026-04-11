@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.prompts import FINALIZER_SYSTEM_PROMPT, build_finalizer_prompt
-from app.state import DiscussionState, get_recent_turns
+from app.state import DiscussionState, count_debater_turns, get_recent_turns
 
 
 def finish_node(state: DiscussionState, services) -> dict:
@@ -16,10 +16,13 @@ def finish_node(state: DiscussionState, services) -> dict:
 
 def finalize_node(state: DiscussionState, services) -> dict:
     """Finalize discussion and write final markdown section."""
+    a_count, b_count = count_debater_turns(state)
     prompt = build_finalizer_prompt(
         topic=state["topic"],
         compact_summary=state["compact_summary"],
         recent_turns=get_recent_turns(state, services.config.recent_context_turns),
+        a_count=a_count,
+        b_count=b_count,
     )
 
     try:
@@ -36,6 +39,7 @@ def finalize_node(state: DiscussionState, services) -> dict:
                 prompt=prompt,
                 completion=summary,
                 metadata={"node": "finalize"},
+                usage_details=getattr(services.ollama_client, "_last_usage", None),
             )
     except Exception as exc:
         services.langfuse.log_error(str(exc), error_type=type(exc).__name__)
