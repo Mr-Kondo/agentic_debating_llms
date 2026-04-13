@@ -208,3 +208,13 @@ uv run pytest
 
 - [使用フレームワーク / ライブラリ](docs/architecture_and_libraries.md)
 - [処理フロー + フロー図 (Mermaid)](docs/repository_flow.md)
+- [サードパーティライセンス一覧](docs/third_party_licenses.md)
+
+## ライセンス表示の再生成
+
+`docs/third_party_licenses.md` は `uv.lock` と仮想環境内の配布メタデータから自動生成されます。
+依存関係を更新したあとは以下のコマンドで再生成してください。
+
+```bash
+uv run python -m app.licenses
+```
